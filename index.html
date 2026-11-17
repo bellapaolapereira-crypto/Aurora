@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111018">
+<title>Aurora — Assistente de Acessibilidade</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#111018;color:#f4f0fa;font-family:system-ui,-apple-system,sans-serif}
+.app{max-width:850px;margin:auto;padding:20px}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #302b3b;padding-bottom:15px;gap:10px}
+.brand{font-size:22px;font-weight:750;letter-spacing:.13em}.brand span{color:#bca6ed}.sub,.muted{font-size:12px;color:#a49bad}.status{font-size:13px;color:#c9bddc;text-align:right}
+main{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding-top:22px}.hero,.chat,.panel{background:#1b1822;border:1px solid #302b3b;border-radius:18px;padding:18px}
+.hero{text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:390px}
+.orb{width:155px;height:155px;border-radius:50%;margin:8px auto 24px;background:radial-gradient(circle at 35% 30%,#eee4ff,#bba5ee 18%,#8065b8 45%,#332744 75%,#17131f);box-shadow:0 0 40px #9875d577,0 0 90px #7654ad44;animation:pulse 4s infinite;transition:filter .4s,opacity .4s}
+.orb.standby{opacity:.6;animation-duration:6s}.orb.listening{box-shadow:0 0 60px #a98ce9;animation:breathe 1s infinite}.orb.speaking{filter:hue-rotate(25deg);animation:breathe .6s infinite}
+.orb.thinking{filter:hue-rotate(-30deg) brightness(1.15);animation:spin 1.2s linear infinite}.orb.nav{box-shadow:0 0 0 6px #1b1822,0 0 0 9px #8b6fd0,0 0 60px #7654ad}
+.orb.offline{filter:grayscale(1);opacity:.5;animation:none}.orb.error{filter:hue-rotate(140deg) saturate(1.6);animation:breathe .4s infinite}
+@keyframes pulse{50%{transform:scale(1.03)}}@keyframes breathe{50%{transform:scale(1.07)}}@keyframes spin{to{transform:rotate(360deg)}}
+h1{font-size:26px;font-weight:500;margin:0 0 8px}.hint{font-size:14px;color:#aaa1b6;line-height:1.6;max-width:340px}
+button{cursor:pointer;font:inherit}.primary{background:#bca6ed;color:#21192f;border:0;border-radius:25px;padding:14px 22px;font-weight:700;margin-top:18px}.secondary,.quick button{background:#292433;color:#e9e1f4;border:1px solid #494054;border-radius:22px;padding:10px 14px}
+.quick{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin-top:14px}.quick button{font-size:12px}
+:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.chat h2,.panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#c6b4e8;margin:0 0 13px}.log{height:260px;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.msg{font-size:14px;line-height:1.5;padding:10px 12px;border-radius:12px;max-width:95%;white-space:pre-wrap}.msg.ai{background:#2b2438;align-self:flex-start}.msg.user{background:#493b61;align-self:flex-end}.who{font-size:10px;color:#b8a5d8;text-transform:uppercase;margin-bottom:4px}
+form.send{display:flex;gap:7px;margin-top:12px}input{min-width:0;flex:1;background:#111018;border:1px solid #40394b;border-radius:22px;padding:11px 13px;color:#fff;font:inherit}form.send button{width:42px;border:0;border-radius:50%;background:#bca6ed;color:#21192f}
+.panels{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 10px}.tab{background:transparent;border:1px solid #3a3445;color:#b9afc5;border-radius:20px;padding:9px 14px}.tab.active{background:#342a45;color:#eee4ff;border-color:#8069aa}
+.panel{display:none}.panel.active{display:block}.panel p,.panel li{font-size:14px;color:#aaa1b6;line-height:1.6}.field{display:block;font-size:13px;color:#cfc5da;margin:12px 0}.field input[type=text],.field input:not([type]){display:block;width:100%;margin-top:6px;border-radius:10px}
+.notice{background:#30283c;border-left:3px solid #a98cda;padding:11px;border-radius:8px;color:#d9cfea;font-size:13px;line-height:1.5;margin-top:12px}.ok{color:#a8e6b9}.no{color:#f0b0b0}.foot{font-size:11px;color:#81798c;margin-top:14px}
+body.hc{background:#000;color:#fff}.hc .hero,.hc .chat,.hc .panel{background:#000;border:2px solid #fff}.hc .msg.ai,.hc .msg.user{background:#000;border:1px solid #fff}.hc .hint,.hc .muted,.hc .panel p,.hc .panel li,.hc .status{color:#fff}
+@media(max-width:650px){.app{padding:13px}main{grid-template-columns:1fr}.hero{min-height:330px}.chat{min-height:350px}.log{height:220px}h1{font-size:24px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top"><div><div class="brand">AUR<span>O</span>RA</div><div class="sub">ASSISTENTE DE ACESSIBILIDADE</div></div><div class="status" id="status" role="status" aria-live="polite">● Desligada</div></header>
+<main>
+<section class="hero" aria-label="Assistente"><div class="orb standby" id="orb" aria-hidden="true"></div><h1 id="greeting">Olá. Eu sou a Aurora.</h1><div class="hint" id="hint">Toque uma única vez no botão abaixo para liberar o microfone e o GPS. Depois disso, é só me chamar pelo nome.</div><button class="primary" id="start">Ativar a Aurora</button><div class="quick"><button data-cmd="Onde eu estou?">Onde estou?</button><button data-cmd="Quero ir para casa">Ir para casa</button><button data-cmd="O que tem perto de mim?">O que tem perto?</button><button data-cmd="Quanto falta?">Quanto falta?</button></div></section>
+<section class="chat" aria-label="Conversa"><h2>Conversa</h2><div class="log" id="log" role="log" aria-live="polite"><div class="muted" id="empty">Suas mensagens aparecerão aqui.</div></div><form class="send" id="form"><input id="message" aria-label="Escreva sua mensagem" placeholder="Escreva ou diga o que precisa..." autocomplete="off"><button aria-label="Enviar">➤</button></form><div class="foot" id="gps">GPS: aguardando ativação.</div></section>
+</main>
+<div class="panels" role="tablist"><button class="tab active" data-panel="status">O que funciona</button><button class="tab" data-panel="settings">Preferências</button><button class="secondary" id="stop">Desativar e parar navegação</button></div>
+<section class="panel active" id="panel-status"><h2>Estado real desta versão</h2><ul>
+<li><b class="ok">Funciona:</b> chamar pelo nome (com a página aberta e a tela ligada, no Chrome), conversa por voz com IA, “onde estou”, busca de destino, rota a pé, instruções faladas, recálculo, “quanto falta”, “o que tem perto”.</li>
+<li><b class="no">Não funciona ainda:</b> escuta com a tela bloqueada ou com outro app aberto (exige app nativo), horários de ônibus, chamada de carro, câmera, semáforos, ligação de emergência.</li></ul>
+<div class="notice">Rotas a pé usam dados do OpenStreetMap, que podem ter erros. Esta assistente não substitui bengala, cão-guia ou orientação e mobilidade. Nunca atravesse uma rua apenas por uma instrução daqui.</div></section>
+<section class="panel" id="panel-settings"><h2>Preferências</h2><div id="fields"></div>
+<label class="field">Velocidade da voz<input id="rate" type="range" min=".7" max="1.5" step=".1"></label>
+<label class="field">Volume<input id="vol" type="range" min=".2" max="1" step=".1"></label>
+<label class="field">Tamanho do texto<input id="size" type="range" min="1" max="1.6" step=".1"></label>
+<label class="field"><input id="hc" type="checkbox"> Alto contraste</label>
+<button class="primary" id="save">Salvar preferências</button><p id="saved" role="status"></p><div class="foot">Os dados ficam salvos somente neste aparelho.</div></section>
+</div>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const D={user:'',assistant:'Aurora',wake:'',home:'',work:'',uni:'',contact:'',code:'',rate:1,vol:1,size:1,hc:false};
+let P={...D};try{P={...D,...JSON.parse(localStorage.getItem('aurora2')||'{}')}}catch(e){}
+const S={awake:false,on:false,speaking:false,busy:false,loc:null,hist:[],nav:null,pend:null,idle:0,rec:null,wl:null,gpsErr:false};
+const n=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+const wakes=()=>[n(P.assistant),n(P.wake)].filter(Boolean);
+const hav=(a,b,c,d)=>{const r=Math.PI/180,x=(c-a)*r,y=(d-b)*r*Math.cos((a+c)*r/2);return Math.hypot(x,y)*6371000};
+const fmt=m=>m<1000?Math.max(10,Math.round(m/10)*10)+' metros':(m/1000).toFixed(1).replace('.',',')+' quilômetros';
+const mins=s=>{const m=Math.max(1,Math.round(s/60));return m+(m===1?' minuto':' minutos')};
+/* estados */
+const M={off:['Desligada','standby'],standby:['Em espera','standby'],listening:['Estou ouvindo','listening'],thinking:['Processando','thinking'],speaking:['Falando','speaking'],nav:['Navegação ativa','nav'],offline:['Sem conexão','offline'],error:['Erro','error']};
+function mode(m,txt){const x=M[m];$('orb').className='orb '+x[1];$('status').textContent='● '+(txt||x[0])}
+const base=()=>S.awake?'listening':S.nav?'nav':S.on?'standby':'off';
+function add(t,who){$('empty')?.remove();const d=document.createElement('div');d.className='msg '+who;const w=document.createElement('div');w.className='who';w.textContent=who==='user'?'Você':P.assistant;const b=document.createElement('div');b.textContent=t;d.append(w,b);$('log').append(d);$('log').scrollTop=1e9}
+let AC;function beep(f=880){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=f;g.gain.value=.15*P.vol;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+.15);o.stop(AC.currentTime+.15)}catch(e){}}
+function say(t){add(t,'ai');return new Promise(res=>{if(!window.speechSynthesis){res();return}speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='pt-BR';u.rate=+P.rate;u.volume=+P.vol;const v=speechSynthesis.getVoices().find(v=>v.lang.replace('_','-')==='pt-BR');if(v)u.voice=v;S.speaking=true;mode('speaking');const e=()=>{S.speaking=false;mode(base());res()};u.onend=e;u.onerror=e;speechSynthesis.speak(u)})}
+/* reconhecimento de voz e palavra de ativação */
+function startRec(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){say('Este navegador não tem reconhecimento de voz. Abra no Google Chrome.');return}
+const r=new SR();S.rec=r;r.lang='pt-BR';r.continuous=true;r.interimResults=true;
+r.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++)hear(n(e.results[i][0].transcript),e.results[i].isFinal)};
+r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){S.on=false;mode('error','Microfone bloqueado');say('O microfone está bloqueado. Libere a permissão nas configurações do navegador.')}else if(e.error==='network')mode('offline')};
+r.onend=()=>{if(S.on)setTimeout(()=>{try{r.start()}catch(e){}},300)};try{r.start()}catch(e){}}
+function hear(t,fin){const w=wakes().find(x=>t.includes(x));
+if(S.speaking){if(w||/\b(pare|para|espera|chega|silencio)\b/.test(t))speechSynthesis.cancel();return}
+if(!S.awake){if(w)wake();else return}
+if(!fin||S.busy){idle();return}idle();const rest=w?t.slice(t.indexOf(w)+w.length).trim():t;if(rest.length>1)handle(rest)}
+function wake(){if(S.awake)return;S.awake=true;beep(880);mode('listening');idle()}
+function sleep(){clearTimeout(S.idle);S.awake=false;beep(440);mode(base())}
+function idle(){clearTimeout(S.idle);S.idle=setTimeout(()=>{if(!S.speaking&&!S.busy)sleep();else idle()},30000)}
+/* GPS */
+function startGPS(){if(!navigator.geolocation){mode('error','GPS indisponível');return}
+navigator.geolocation.watchPosition(p=>{S.gpsErr=false;S.loc={lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy,ts:Date.now()};$('gps').textContent='GPS: precisão de '+Math.round(S.loc.acc)+' m.';tick()},e=>{$('gps').textContent='GPS: sem sinal ou sem permissão.';if(!S.gpsErr){S.gpsErr=true;mode('error','Erro de GPS');say(e.code===1?'A permissão de localização foi negada. Libere nas configurações do navegador.':'Não estou conseguindo sinal de GPS.')}},{enableHighAccuracy:true,maximumAge:2000,timeout:20000})}
+async function wakeLock(){try{S.wl=await navigator.wakeLock.request('screen')}catch(e){}}
+/* intenções */
+async function handle(raw){add(raw,'user');S.busy=true;mode('thinking');try{await route(n(raw),raw)}catch(e){await say(navigator.onLine?'Tive um problema ao processar isso. Pode repetir?':'Estou sem conexão com a internet agora.')}S.busy=false;if(S.awake)idle()}
+const alias=t=>/^(casa|minha casa)$/.test(t)?['home',P.home]:/^(trabalho|meu trabalho)$/.test(t)?['work',P.work]:/^(universidade|faculdade|a universidade)$/.test(t)?['uni',P.uni]:null;
+async function route(t,raw){
+if(S.pend){const p=S.pend;S.pend=null;if(/^(sim|confirmo|pode|isso|ok|claro|vamos)/.test(t))return begin(p);if(/^(nao|cancela|outro)/.test(t))return say('Tudo bem. Qual destino você prefere?')}
+if(/tchau|encerrar conversa|pode dormir|ate logo|so isso/.test(t)){await say('Até logo.');return sleep()}
+if(/onde (eu )?estou|minha localizacao|que lugar e esse/.test(t))return where();
+if(/parar (a )?navegacao|cancelar (a )?(rota|navegacao)|parar rota/.test(t)){stopNav();return say('Navegação encerrada.')}
+if(S.nav){if(/quanto falta|ja chegu|falta muito/.test(t))return progress();if(/caminho certo|rota certa|perdid/.test(t))return onRoute();if(/repet/.test(t))return say(S.nav.last||'Não tenho instrução para repetir.');if(/outra rota|alternativa/.test(t))return altRoute()}
+if(/emergencia|socorro|ajuda urgente/.test(t))return say('Não consigo ligar para ninguém nem enviar sua localização nesta versão. Se houver risco, ligue 192 para o Samu, 193 para os Bombeiros ou 190 para a Polícia, ou peça ajuda a alguém por perto.'+(P.contact?' Seu contato de confiança é '+P.contact+'.':''));
+if(/perto|ao redor|proximo/.test(t)&&!/quero ir|ir para/.test(t))return nearby();
+if(/onibus|linha|uber|carro|corrida|camera|semaforo|atravess|descrev/.test(t))return say('Isso ainda não está disponível nesta versão: não tenho horários de ônibus, chamada de carro, câmera nem leitura de semáforos. Não vou inventar informações. Posso ajudar com localização e rotas a pé.');
+const m=t.match(/(?:quero ir|ir|me leve|leve me|navegar|navegue|rota|como chego|como eu chego)(?: ate| para| pra| a| ao| na| no| em)?(?: a| o)? (.+)/);
+if(m)return dest(m[1]);
+return ask(raw)}
+/* destinos e rotas */
+async function geo(q){const l=S.loc,v=l?`&viewbox=${l.lon-.4},${l.lat+.4},${l.lon+.4},${l.lat-.4}`:'';return(await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=3&addressdetails=1&countrycodes=br&accept-language=pt-BR${v}&q=${encodeURIComponent(q)}`)).json()}
+async function dest(txt){if(!S.loc)return say('Ainda não tenho sua localização. Verifique o GPS.');let q=txt;const a=alias(txt);if(a){if(!a[1])return say('Você ainda não cadastrou esse endereço nas preferências.');q=a[1]}
+const r=await geo(q);if(!r.length)return say('Não encontrei esse lugar. Pode dizer o nome com a rua ou o bairro?');const x=r[0],ad=x.address||{};
+const d={name:a?txt:(x.name||x.display_name.split(',')[0]),lat:+x.lat,lon:+x.lon};S.pend=d;
+return say(`Encontrei ${d.name}${ad.road?', em '+ad.road:''}${ad.suburb?', bairro '+ad.suburb:''}, a ${fmt(hav(S.loc.lat,S.loc.lon,d.lat,d.lon))} em linha reta. Quer ir para lá?`)}
+async function plan(d){const l=S.loc,j=await(await fetch(`https://routing.openstreetmap.de/routed-foot/route/v1/foot/${l.lon},${l.lat};${d.lon},${d.lat}?alternatives=true&steps=true&geometries=geojson&overview=full`)).json();return j.code==='Ok'?j.routes:null}
+const MOD={left:'à esquerda','slight left':'levemente à esquerda','sharp left':'fechando à esquerda',right:'à direita','slight right':'levemente à direita','sharp right':'fechando à direita'};
+function phrase(s){const m=s.maneuver,nm=s.name?', '+s.name:'';if(m.type==='arrive')return 'você chega ao destino';if(m.type==='depart')return 'siga em frente'+nm;if(m.type==='roundabout'||m.type==='rotary')return 'entre na rotatória'+nm;if(m.modifier==='uturn')return 'faça o retorno';if(!MOD[m.modifier])return 'continue em frente'+nm;return 'vire '+MOD[m.modifier]+nm}
+function setRoute(i){const N=S.nav,r=N.rs[i];N.i=i;N.r=r;N.steps=r.legs.flatMap(l=>l.steps);N.geom=r.geometry.coordinates;N.cum=[0];for(let j=1;j<N.geom.length;j++)N.cum[j]=N.cum[j-1]+hav(N.geom[j-1][1],N.geom[j-1][0],N.geom[j][1],N.geom[j][0]);N.k=1;N.near=false;N.off=0}
+const first=()=>{const N=S.nav,s=N.steps;return cap(phrase(s[0]))+' por '+fmt(s[0].distance)+(s[1]?'. Depois, '+phrase(s[1])+'.':'.')};
+const cap=s=>s[0].toUpperCase()+s.slice(1);
+async function begin(d){const rs=await plan(d);if(!rs)return say('Não consegui calcular uma rota a pé até lá.');S.nav={d,rs,pending:null,last:'',lastRecalc:0};setRoute(0);const r=S.nav.r;S.nav.last=first();await say(`Rota a pé para ${d.name}: ${fmt(r.distance)}, cerca de ${mins(r.duration)}.${rs.length>1?` Há mais ${rs.length-1} alternativa${rs.length>2?'s':''}. Diga outra rota para ouvir.`:''} ${S.nav.last}`);mode('nav')}
+function stopNav(){S.nav=null;mode(base())}
+function off(){const N=S.nav,l=S.loc,g=N.geom,kx=111320*Math.cos(l.lat*Math.PI/180),ky=110540;let best=1e9,bi=0;for(let j=0;j<g.length-1;j++){const ax=(g[j][0]-l.lon)*kx,ay=(g[j][1]-l.lat)*ky,bx=(g[j+1][0]-l.lon)*kx,by=(g[j+1][1]-l.lat)*ky,dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy,t=L?Math.max(0,Math.min(1,-(ax*dx+ay*dy)/L)):0,d=Math.hypot(ax+t*dx,ay+t*dy);if(d<best){best=d;bi=j}}return[best,bi]}
+const rem=()=>{const N=S.nav,[,bi]=off();return Math.max(0,N.cum[N.cum.length-1]-N.cum[bi])};
+function progress(){const N=S.nav,r=rem();return say(r<25?'Você está chegando ao destino.':`Faltam cerca de ${fmt(r)}, mais ou menos ${mins(N.r.duration*r/N.r.distance)}.`)}
+function onRoute(){const[d]=off(),a=Math.round(S.loc.acc);return say(d<30?`Sim, você está na rota. Precisão do GPS: ${a} metros.`:`Você parece estar a ${fmt(d)} da rota. Precisão do GPS: ${a} metros. Se continuar longe, vou recalcular.`)}
+function altRoute(){const N=S.nav;setRoute((N.i+1)%N.rs.length);N.last=first();return say(`Rota alternativa: ${fmt(N.r.distance)}, cerca de ${mins(N.r.duration)}. ${N.last}`)}
+function tick(){const N=S.nav,l=S.loc;if(!N||!l)return;const free=()=>!S.speaking&&!S.busy;
+if(N.pending&&free()){N.last=N.pending;say(N.pending);N.pending=null;return}
+const s=N.steps[N.k];if(!s)return;const d=hav(l.lat,l.lon,s.maneuver.location[1],s.maneuver.location[0]),arr=s.maneuver.type==='arrive';
+if(arr&&d<25){const nm=N.d.name;S.nav=null;mode(base());say(`Você chegou ao destino: ${nm}. Confira o entorno com cuidado.`);return}
+if(d<22&&!arr){N.k++;N.near=false;const p=N.steps[N.k-1];N.pending=`Siga por ${fmt(p.distance)}, depois ${phrase(N.steps[N.k])}.`;return}
+if(d<60&&!N.near&&free()){N.near=true;N.last=`Em ${fmt(d)}, ${phrase(s)}.`;say(N.last)}
+const[o]=off();if(o>45&&l.acc<50){if(++N.off>=3&&Date.now()-N.lastRecalc>15000){N.lastRecalc=Date.now();N.off=0;N.pending='Você saiu da rota. Recalculando.';plan(N.d).then(rs=>{if(rs&&S.nav===N){N.rs=rs;setRoute(0);N.pending='Rota recalculada. '+first()}}).catch(()=>{})}}else N.off=0}
+/* localização, entorno e IA */
+async function where(){const l=S.loc;if(!l)return say('Ainda não consegui sua localização. Verifique o GPS e a permissão.');const a=(await(await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=pt-BR&lat=${l.lat}&lon=${l.lon}`)).json()).address||{},c=a.city||a.town||a.village;
+return say(`Você está em ${a.road||'um local sem nome de rua no mapa'}${a.house_number?', número '+a.house_number:''}${a.suburb||a.neighbourhood?', bairro '+(a.suburb||a.neighbourhood):''}${c?', '+c:''}. Precisão do GPS: cerca de ${Math.round(l.acc)} metros${l.acc>50?', então este endereço é aproximado':''}.`)}
+async function nearby(){const l=S.loc;if(!l)return say('Ainda não tenho sua localização.');const q=`[out:json][timeout:10];(node(around:200,${l.lat},${l.lon})[name];node(around:300,${l.lat},${l.lon})[highway=bus_stop];);out 40;`;
+const j=await(await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q)})).json(),seen={};
+const it=j.elements.map(e=>({n:e.tags.name||(e.tags.highway==='bus_stop'?'ponto de ônibus':null),d:hav(l.lat,l.lon,e.lat,e.lon)})).filter(x=>x.n&&!seen[x.n]&&(seen[x.n]=1)).sort((a,b)=>a.d-b.d).slice(0,5);
+return say(it.length?'Segundo o mapa aberto, perto de você: '+it.map(x=>`${x.n}, a ${fmt(x.d)}`).join('; ')+'. Não sei a direção exata nem se estão abertos.':'O mapa não tem lugares cadastrados bem perto de você.')}
+async function ask(raw){S.hist.push({role:'user',content:raw});const l=S.loc,r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json','x-access':P.code},body:JSON.stringify({messages:S.hist.slice(-12),context:{user:P.user,assistant:P.assistant,loc:l&&{lat:l.lat,lon:l.lon,acc:Math.round(l.acc)},navTo:S.nav&&S.nav.d.name,hora:new Date().toLocaleString('pt-BR')}})});
+if(r.status===501)return say('A inteligência artificial ainda não foi configurada no servidor.');if(r.status===401)return say('O código de acesso está incorreto. Confira nas preferências.');if(!r.ok)throw 0;
+const j=await r.json();S.hist.push({role:'assistant',content:j.text});return say(j.text)}
+/* interface */
+async function start(){S.on=true;beep(660);startRec();startGPS();wakeLock();speechSynthesis&&speechSynthesis.getVoices();mode('standby');$('start').textContent='Aurora ativa';$('hint').textContent='Diga “'+P.assistant+'” e depois o que precisa. Mantenha esta página aberta e a tela ligada.';await say(`Olá${P.user?', '+P.user:''}. Estou escutando. Diga ${P.assistant} quando precisar.`)}
+$('start').onclick=start;
+$('stop').onclick=()=>{S.on=false;S.awake=false;S.rec&&S.rec.stop();speechSynthesis.cancel();S.nav=null;mode('off');$('start').textContent='Ativar a Aurora'};
+$('form').onsubmit=e=>{e.preventDefault();const v=$('message').value.trim();$('message').value='';if(v)handle(v)};
+document.querySelectorAll('[data-cmd]').forEach(b=>b.onclick=()=>handle(b.dataset.cmd));
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id==='panel-'+b.dataset.panel))});
+addEventListener('offline',()=>mode('offline'));addEventListener('online',()=>mode(base()));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.on)wakeLock()});
+const F=[['user','Como quer ser chamado(a)?'],['assistant','Nome da assistente'],['wake','Palavra de ativação alternativa'],['home','Endereço de casa'],['work','Endereço do trabalho'],['uni','Universidade ou outro destino frequente'],['contact','Contato de confiança (nome e telefone)'],['code','Código de acesso ao servidor']];
+$('fields').innerHTML=F.map(f=>`<label class="field">${f[1]}<input type="text" id="f_${f[0]}"></label>`).join('');
+function fill(){F.forEach(f=>$('f_'+f[0]).value=P[f[0]]);['rate','vol','size'].forEach(k=>$(k).value=P[k]);$('hc').checked=P.hc;document.body.classList.toggle('hc',P.hc);document.body.style.zoom=P.size;$('greeting').textContent=P.user?`Olá, ${P.user}. Eu sou ${P.assistant}.`:`Olá. Eu sou ${P.assistant}.`;document.title=P.assistant+' — Assistente de Acessibilidade'}
+$('save').onclick=()=>{F.forEach(f=>P[f[0]]=$('f_'+f[0]).value.trim());P.assistant=P.assistant||'Aurora';['rate','vol','size'].forEach(k=>P[k]=+$(k).value);P.hc=$('hc').checked;try{localStorage.setItem('aurora2',JSON.stringify(P));$('saved').textContent='Preferências salvas.'}catch(e){$('saved').textContent='Não foi possível salvar.'}fill()};
+fill();
+})();
+</script>
+</body></html>
